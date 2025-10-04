@@ -1,334 +1,325 @@
-# Upgradeable FundMe Smart Contract
+# FundMe Upgradeable Smart Contract
 
-A production-ready upgradeable crowdfunding smart contract built with Foundry, demonstrating the UUPS (Universal Upgradeable Proxy Standard) proxy pattern.
-
-## Overview
-
-This project implements a crowdfunding contract with two versions:
-- **V1**: Basic crowdfunding with goal-based withdrawals
-- **V2**: Enhanced version with refund functionality and lower minimum contribution
+A crowdfunding smart contract built with Solidity and Foundry that implements the UUPS proxy pattern for upgradeability, featuring goal-based withdrawals and optional refund functionality.
 
 ## Features
 
-### FundMe V1
-- Users can fund with a minimum of 0.001 ETH
-- Goal-based system: Owner can withdraw when 5 funders are reached
-- Owner-only withdrawal function
-- Track total funders and contract balance
+- **UUPS Proxy Pattern**: Upgradeable contract design using OpenZeppelin's UUPS implementation
+- **Goal-based Funding**: Requires 5 funders before owner can withdraw
+- **Minimum Funding**: V1 requires 0.001 ETH, V2 reduces to 0.0009 ETH
+- **Refund Capability**: V2 adds refund functionality for funders before goal is met
+- **Amount Tracking**: V2 tracks individual funding amounts per address
+- **Owner Controls**: Only owner can withdraw funds and toggle features
+- **State Preservation**: All state data preserved across upgrades
+- **Event-driven**: Comprehensive event logging for transparency
 
-### FundMe V2 (Upgraded)
-- Lower minimum: Users can fund with 0.0009 ETH
-- Refund mechanism: Users can request refunds before goal is met
-- Toggle refunds: Owner can enable/disable refund functionality
-- Enhanced tracking: Map funders to their contribution amounts
-- Backward compatible: All V1 state preserved after upgrade
+## Quick Start
 
-## Architecture
+### Prerequisites
 
-This project uses the UUPS (Universal Upgradeable Proxy Standard) pattern. Users interact with the proxy contract, which delegates calls to the implementation contract using delegatecall. The proxy address remains constant while the implementation can be upgraded from V1 to V2.
+- [Foundry](https://book.getfoundry.sh/getting-started/installation)
+- [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
 
-### Deployed Addresses (Sepolia Testnet)
-- **Proxy**: `0x55C1De9BB4BD9aa0B2C7b5C2836666384dB47bB9`
-- **FundMeV1 Implementation**: `0xF9Bdb5b23c9D83d0A2592688bfDd13CFCC3aA03B`
-- **FundMeV2 Implementation**: `0xd2Be2B68436576175918DA0b59EB7FDd27621Cf4`
+### Installation
 
-Note: Always interact with the proxy address, not the implementation contracts directly.
-
-## Prerequisites
-
-- Foundry (forge, cast, anvil)
-- An Ethereum wallet with Sepolia ETH
-- Alchemy or Infura RPC URL
-- Etherscan API key for contract verification
-
-## Installation
-
-1. Clone the repository:
 ```bash
-git clone <repository-url>
-cd foundry-upgradeable
-```
-
-2. Install dependencies:
-```bash
+git clone <your-repo-url>
+cd fundme-upgradeable
 forge install
 ```
 
-3. Create a `.env` file:
+### Environment Setup
+
+Create a `.env` file:
 ```bash
-SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/your-api-key
-PRIVATE_KEY=your-private-key
-ETHERSCAN_API_KEY=your-etherscan-api-key
-PROXY_ADDRESS=0x55C1De9BB4BD9aa0B2C7b5C2836666384dB47bB9
+PRIVATE_KEY=your_private_key
+SEPOLIA_RPC_URL=your_sepolia_rpc_url
+ETHERSCAN_API_KEY=your_etherscan_api_key
+PROXY_ADDRESS=deployed_proxy_address
 ```
 
-4. Load environment variables:
-```bash
-source .env
-```
+## Usage
 
-## Deployment Guide
-
-### Step 1: Deploy FundMe V1
-
-Deploy the initial version with proxy:
+### Deploy V1
 
 ```bash
-forge script script/DeployFundMe.s.sol:DeployFundMe \
-  --rpc-url $SEPOLIA_RPC_URL \
-  --private-key $PRIVATE_KEY \
-  --broadcast \
-  --verify \
-  --etherscan-api-key $ETHERSCAN_API_KEY \
-  -vvvv
+# Deploy to local anvil
+forge script script/DeployFundMe.s.sol --rpc-url http://localhost:8545 --broadcast
+
+# Deploy to Sepolia testnet
+forge script script/DeployFundMe.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcast --verify
 ```
-
-This deploys:
-- FundMeV1 implementation contract
-- ERC1967 proxy contract
-- Initializes the proxy with V1 logic
-
-### Step 2: Interact with V1
-
-Test funding with V1's minimum (0.001 ETH):
-
-```bash
-cast send $PROXY_ADDRESS "fund()" \
-  --value 0.001ether \
-  --rpc-url $SEPOLIA_RPC_URL \
-  --private-key $PRIVATE_KEY
-```
-
-Test with below minimum (should fail):
-
-```bash
-cast send $PROXY_ADDRESS "fund()" \
-  --value 0.0009ether \
-  --rpc-url $SEPOLIA_RPC_URL \
-  --private-key $PRIVATE_KEY
-```
-
-### Step 3: Upgrade to V2
-
-Upgrade the proxy to point to V2 implementation:
-
-```bash
-forge script script/UpgradeToV2.s.sol:UpgradeToV2 \
-  --rpc-url $SEPOLIA_RPC_URL \
-  --private-key $PRIVATE_KEY \
-  --broadcast \
-  --verify \
-  --etherscan-api-key $ETHERSCAN_API_KEY \
-  -vvvv
-```
-
-### Step 4: Interact with V2
-
-Test funding with V2's lower minimum (0.0009 ETH):
-
-```bash
-cast send $PROXY_ADDRESS "fund()" \
-  --value 0.0009ether \
-  --rpc-url $SEPOLIA_RPC_URL \
-  --private-key $PRIVATE_KEY
-```
-
-This should now succeed, demonstrating the upgrade.
-
-## Using Interaction Scripts
-
-The Interact.s.sol script provides multiple functions for interacting with the deployed contract.
 
 ### Fund the Contract
 
 ```bash
-forge script script/Interact.s.sol:Interact \
-  --sig "fund()" \
-  --rpc-url $SEPOLIA_RPC_URL \
-  --private-key $PRIVATE_KEY \
-  --broadcast \
-  -vvvv
-```
+# Using interaction script
+forge script script/Interact.s.sol:Interact --sig "fund()" --rpc-url $SEPOLIA_RPC_URL --broadcast
 
-### Check Contract Status
-
-```bash
-forge script script/Interact.s.sol:Interact \
-  --sig "status()" \
-  --rpc-url $SEPOLIA_RPC_URL
+# Using cast directly
+cast send $PROXY_ADDRESS "fund()" --value 0.001ether --rpc-url $SEPOLIA_RPC_URL --private-key $PRIVATE_KEY
 ```
 
 ### Withdraw Funds (Owner Only)
 
 ```bash
-forge script script/Interact.s.sol:Interact \
-  --sig "withdraw()" \
-  --rpc-url $SEPOLIA_RPC_URL \
-  --private-key $PRIVATE_KEY \
-  --broadcast \
-  -vvvv
+# Using interaction script
+forge script script/Interact.s.sol:Interact --sig "withdraw()" --rpc-url $SEPOLIA_RPC_URL --broadcast
+
+# Using cast directly
+cast send $PROXY_ADDRESS "withdraw()" --rpc-url $SEPOLIA_RPC_URL --private-key $PRIVATE_KEY
 ```
 
-Note: Withdrawal only works when the goal is met (5 funders).
-
-### Request Refund (V2 Only)
+### Check Status
 
 ```bash
-forge script script/Interact.s.sol:Interact \
-  --sig "refund()" \
-  --rpc-url $SEPOLIA_RPC_URL \
-  --private-key $PRIVATE_KEY \
-  --broadcast \
-  -vvvv
+forge script script/Interact.s.sol:Interact --sig "status()" --rpc-url $SEPOLIA_RPC_URL
 ```
 
-### Toggle Refunds (V2 Only, Owner)
+### Upgrade to V2
 
 ```bash
-forge script script/Interact.s.sol:Interact \
-  --sig "toggleRefunds()" \
-  --rpc-url $SEPOLIA_RPC_URL \
-  --private-key $PRIVATE_KEY \
-  --broadcast \
-  -vvvv
+forge script script/UpgradeToV2.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcast --verify
 ```
 
-## Reading Contract Data with Cast
-
-### Check Amount Funded by Address
+### V2 Specific Functions
 
 ```bash
-cast call $PROXY_ADDRESS \
-  "getAmountFunded(address)(uint256)" \
-  <FUNDER_ADDRESS> \
-  --rpc-url $SEPOLIA_RPC_URL
+# Request refund
+forge script script/Interact.s.sol:Interact --sig "refund()" --rpc-url $SEPOLIA_RPC_URL --broadcast
+
+# Toggle refunds (owner only)
+forge script script/Interact.s.sol:Interact --sig "toggleRefunds()" --rpc-url $SEPOLIA_RPC_URL --broadcast
+
+# Check amount funded by address
+cast call $PROXY_ADDRESS "getAmountFunded(address)(uint256)" <ADDRESS> --rpc-url $SEPOLIA_RPC_URL
 ```
 
-Convert result to ETH:
+## Contract Architecture
 
-```bash
-cast call $PROXY_ADDRESS \
-  "getAmountFunded(address)(uint256)" \
-  <FUNDER_ADDRESS> \
-  --rpc-url $SEPOLIA_RPC_URL | cast to-unit ether
+### Core Contracts
+
+- **FundMeV1.sol**: Initial implementation with basic crowdfunding functionality
+- **FundMeV2.sol**: Upgraded implementation with refund capability and lower minimum
+
+### Inheritance Structure
+
+```
+FundMeV1
+├── Initializable (OpenZeppelin)
+├── UUPSUpgradeable (OpenZeppelin)
+└── OwnableUpgradeable (OpenZeppelin)
+
+FundMeV2
+└── FundMeV1
 ```
 
-### Check Contract Version
+### Proxy Pattern
 
-```bash
-cast call $PROXY_ADDRESS "version()(uint256)" --rpc-url $SEPOLIA_RPC_URL
-```
+The contract uses the UUPS (Universal Upgradeable Proxy Standard) pattern:
+- **Proxy Contract**: Holds state and delegates calls to implementation
+- **Implementation Contract**: Contains the logic
+- **Upgrades**: Owner can upgrade implementation while preserving state
 
-Returns: 1 for V1, 2 for V2
+### FundMeV1 Functions
 
-### Check Number of Funders
+- `initialize()`: Initializes the contract (replaces constructor)
+- `fund()`: Accept ETH donations with 0.001 ETH minimum
+- `withdraw()`: Owner withdraws all funds after goal is met
+- `getFundersCount()`: Returns number of unique funders
+- `getBalance()`: Returns contract balance
+- `getFunders()`: Returns array of all funder addresses
+- `isGoalMet()`: Checks if 5 or more funders exist
+- `hasFunded(address)`: Checks if address has funded
+- `version()`: Returns contract version (1)
 
-```bash
-cast call $PROXY_ADDRESS "getFundersCount()(uint256)" --rpc-url $SEPOLIA_RPC_URL
-```
+### FundMeV2 Functions
 
-### Check Contract Balance
+All V1 functions plus:
 
-```bash
-cast call $PROXY_ADDRESS "getBalance()(uint256)" --rpc-url $SEPOLIA_RPC_URL | cast to-unit ether
-```
+- `initializeV2()`: Reinitializer for V2 upgrade
+- `fund()`: Overridden with 0.0009 ETH minimum and amount tracking
+- `refund()`: Allows funders to get refund before goal is met
+- `toggleRefunds()`: Owner can enable/disable refunds
+- `getAmountFunded(address)`: Returns total amount funded by address
+- `getMinimumFunding()`: Returns current minimum funding amount
+- `refundsEnabled()`: Returns whether refunds are currently enabled
+- `version()`: Returns contract version (2)
 
-### Check if Goal is Met
+### Deployment Scripts
 
-```bash
-cast call $PROXY_ADDRESS "isGoalMet()(bool)" --rpc-url $SEPOLIA_RPC_URL
-```
-
-### Check Refunds Status (V2 Only)
-
-```bash
-cast call $PROXY_ADDRESS "refundsEnabled()(bool)" --rpc-url $SEPOLIA_RPC_URL
-```
+- **DeployFundMe.s.sol**: Deploys implementation and proxy for V1
+- **UpgradeToV2.s.sol**: Upgrades existing proxy to V2 implementation
+- **Interact.s.sol**: Interaction scripts for funding, withdrawing, and checking status
 
 ## Testing
 
-Run the test suite:
+Run the complete test suite:
 
 ```bash
+# Run all tests
 forge test
-```
 
-Run with verbose output:
-
-```bash
+# Run with verbose output
 forge test -vvv
+
+# Run specific test
+forge test --match-test testUpgradeToV2
+
+# Generate coverage report
+forge coverage
 ```
 
-Run specific test:
+### Test Coverage
 
-```bash
-forge test --match-test testUpgrade -vvv
-```
+#### V1 Tests
 
-## Key Concepts Demonstrated
+- **Initialization**: Verifies owner, version, and initial state
+- **Funding**: Tests basic funding with minimum requirements
+- **Multiple Funders**: Validates tracking of multiple unique funders
+- **Duplicate Funding**: Same funder counted only once
+- **Withdrawal Restrictions**: Cannot withdraw before goal is met
+- **Withdrawal Success**: Owner withdraws after 5 funders
+- **Access Control**: Only owner can withdraw
 
-### UUPS Proxy Pattern
-- Proxy contract holds state and delegates calls to implementation
-- Implementation logic can be upgraded without changing proxy address
-- All state is preserved during upgrades
+#### Upgrade Tests
 
-### Upgradeability
-- Implementation contracts are deployed separately
-- Proxy is upgraded to point to new implementation
-- State variables must be compatible between versions
-- New state variables can be added in upgrades
+- **Upgrade Process**: Successfully upgrades V1 to V2
+- **State Preservation**: Funders and balances preserved after upgrade
+- **Access Control**: Only owner can perform upgrade
+- **Version Update**: Version number correctly incremented
 
-### Initialization
-- Upgradeable contracts use `initialize()` instead of constructors
-- Each version has its own initializer (V1: `initialize()`, V2: `initializeV2()`)
-- Initializers are protected to prevent re-initialization
+#### V2 Tests
 
-### Access Control
-- Owner-only functions protected with `onlyOwner` modifier
-- Owner set during initialization and transferred via OpenZeppelin's Ownable
+- **Lower Minimum**: Accepts 0.0009 ETH funding
+- **Amount Tracking**: Tracks total funded per address
+- **Refund Functionality**: Users can refund before goal
+- **Refund Restrictions**: Cannot refund after goal is met
+- **Toggle Refunds**: Owner can enable/disable refunds
+- **State Migration**: V1 state accessible in V2
 
-## Security Considerations
+## Security Features
 
-1. **Storage Layout**: Maintained compatibility between V1 and V2
-2. **Initialization**: Protected against re-initialization attacks
-3. **Access Control**: Owner-only functions for critical operations
-4. **Upgradeability**: Only owner can upgrade the contract
-5. **Minimum Funding**: Enforced to prevent spam transactions
+- **UUPS Proxy Pattern**: Secure upgradeability with owner authorization
+- **Access Control**: Ownable pattern restricts privileged functions
+- **Initialize Protection**: Prevents re-initialization attacks
+- **Storage Collision Prevention**: V2 appends new variables to avoid conflicts
+- **Reentrancy Protection**: Safe call patterns for ETH transfers
+- **Goal-based Withdrawals**: Prevents premature fund withdrawal
+- **Refund Guards**: Multiple checks prevent unauthorized refunds
 
 ## Gas Optimization
 
-- V2 funding uses less gas than V1 due to optimized logic
-- Efficient mapping for funder tracking
-- Minimal storage updates during operations
+- Efficient storage with mappings for tracking funders
+- Events for off-chain data tracking
+- Minimal state changes during upgrades
+- Optimized loops avoided where possible
 
-## Troubleshooting
+## Upgrade Process
 
-### "Could not find target contract"
-Make sure you're using the correct contract name and function signature with the `--sig` flag.
+### How Upgrades Work
 
-### "Goal not met yet"
-The withdrawal function requires 5 funders before allowing withdrawal. Fund the contract more times or from different addresses.
+1. Deploy new implementation contract (V2)
+2. Call `upgradeToAndCall()` on proxy with V2 address
+3. New implementation's `initializeV2()` runs once
+4. All future calls routed to V2 logic
+5. Original state data preserved in proxy
 
-### "Minimum funding is X ETH"
-Make sure you're sending at least the minimum amount (0.001 ETH for V1, 0.0009 ETH for V2).
+### Storage Layout
 
-### Verification Issues
-If contract verification fails, try running the verification command separately:
-
-```bash
-forge verify-contract <CONTRACT_ADDRESS> \
-  src/FundMeV2.sol:FundMeV2 \
-  --chain sepolia \
-  --etherscan-api-key $ETHERSCAN_API_KEY
+**V1 Storage:**
+```solidity
+uint256 MINIMUM_FUNDING (constant)
+uint256 FUNDING_GOAL (constant)
+address[] funders
+mapping(address => bool) hasFunded
 ```
+
+**V2 Added Storage:**
+```solidity
+uint256 MINIMUM_FUNDING_V2 (constant)
+mapping(address => uint256) funderToAmount
+bool refundsEnabled
+```
+
+Storage slots are preserved to prevent collision during upgrades.
+
+## Funding Goal Mechanics
+
+### Entry Requirements
+
+- Minimum funding: 0.001 ETH (V1) or 0.0009 ETH (V2)
+- Contract must be in OPEN state
+- No maximum funding limit
+
+### Withdrawal Requirements
+
+- Must have 5 or more unique funders
+- Only contract owner can withdraw
+- Transfers entire contract balance to owner
+
+### Refund Mechanics (V2)
+
+- Only available before goal is met
+- Can be toggled on/off by owner
+- Returns full amount funded by caller
+- Prevents refund after goal reached
+
+## Events
+
+### V1 Events
+
+- `Funded(address indexed funder, uint256 amount)`: Emitted when user funds
+- `Withdrawn(address indexed owner, uint256 amount)`: Emitted when owner withdraws
+
+### V2 Events
+
+All V1 events plus:
+
+- `Refunded(address indexed funder, uint256 amount)`: Emitted on successful refund
+- `RefundsToggled(bool enabled)`: Emitted when refunds are toggled
+
+## Error Messages
+
+### V1 Errors
+
+- "Minimum funding is 0.001 ETH": Sent value below minimum
+- "Funding goal not met yet": Withdrawal attempted before 5 funders
+- "No funds to withdraw": Contract balance is zero
+- "Withdrawal failed": ETH transfer failed
+
+### V2 Errors
+
+- "Minimum funding is 0.0009 ETH": Sent value below V2 minimum
+- "Refunds are not enabled": Refund attempted when disabled
+- "Goal already met, cannot refund": Refund attempted after goal reached
+- "No funds to refund": Caller has no funded amount
+- "Refund failed": ETH transfer failed
+
+## Use Cases
+
+- **Crowdfunding Campaigns**: Collect funds for projects with goal thresholds
+- **Community Fundraisers**: Group funding with refund options
+- **Product Pre-sales**: Collect payments with refund capability
+- **Milestone-based Funding**: Release funds only after participation goals met
+- **Upgradeable Treasuries**: Flexible contract logic while preserving funds
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Add comprehensive tests for new functionality
+4. Ensure all tests pass
+5. Submit a pull request
 
 ## License
 
-MIT
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## Resources
 
 - [Foundry Documentation](https://book.getfoundry.sh/)
 - [OpenZeppelin Upgradeable Contracts](https://docs.openzeppelin.com/contracts/4.x/upgradeable)
-- [UUPS Proxy Pattern](https://eips.ethereum.org/EIPS/eip-1822)
-- [EIP-1967: Proxy Storage Slots](https://eips.ethereum.org/EIPS/eip-1967)
+- [UUPS Proxy Pattern](https://docs.openzeppelin.com/contracts/4.x/api/proxy#UUPSUpgradeable)
+- [Proxy Upgrade Pattern](https://docs.openzeppelin.com/upgrades-plugins/1.x/proxies)
+- [Solidity Documentation](https://docs.soliditylang.org/)
